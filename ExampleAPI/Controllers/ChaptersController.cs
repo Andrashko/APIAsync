@@ -13,9 +13,9 @@ namespace ExampleAPI.Controllers
     [ApiController]
     public class ChaptersController : ControllerBase
     {
-        private readonly EPROJECTSEXAMPLEAPIEXAMPLEAPIEXAMPLEMDFContext _context;
+        private readonly EPROJECTSWEBAPIEXAMPLEAPIEXAMPLEMDFContext _context;
 
-        public ChaptersController(EPROJECTSEXAMPLEAPIEXAMPLEAPIEXAMPLEMDFContext context)
+        public ChaptersController(EPROJECTSWEBAPIEXAMPLEAPIEXAMPLEMDFContext context)
         {
             _context = context;
         }
