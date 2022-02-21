@@ -12,6 +12,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using System.Security.Cryptography;
 
 namespace ExampleAPI.Controllers
 {
@@ -23,14 +24,17 @@ namespace ExampleAPI.Controllers
         private readonly EPROJECTSWEBAPIEXAMPLEAPIEXAMPLEMDFContext _context;
 
         private readonly JWTSettings _jwtSettings;
+
+        private readonly Security _security;
         public UsersController(EPROJECTSWEBAPIEXAMPLEAPIEXAMPLEMDFContext context, IOptions<JWTSettings> jwtsettings)
         {
             _context = context;
             _jwtSettings = jwtsettings.Value;
+            _security = new Security (_jwtSettings.SecretKey);
         }
 
         [Authorize]
-        [HttpGet("Check")]
+        [HttpGet]
         public async Task<ActionResult<Users>> GetUsers()
         {
             string login = HttpContext.User.Identity.Name;
@@ -41,15 +45,13 @@ namespace ExampleAPI.Controllers
         }
 
 
-        // POST: api/Users
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
+        // POST: api/Users/Login
         [HttpPost ("Login")]
         public async Task<ActionResult<Users>> Login( [FromBody] Users user)
         {
             var userdb = await _context.Users.Where(u => u.Login == user.Login).FirstOrDefaultAsync();
-            if (user==null || ! (user.Password == userdb.Password))
-                return BadRequest("Wron password or login");
+            if (user==null || ! _security.CheckPassword (user.Password, userdb.Password))
+                return BadRequest("Wrong password or login");
 
             UserWithTocken result = new UserWithTocken(userdb);
 
@@ -70,20 +72,18 @@ namespace ExampleAPI.Controllers
             return Ok(result);
         }
 
-        // DELETE: api/Users/5
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<Users>> DeleteUsers(int id)
+        // POST: api/Users
+        [HttpPost("Register")]
+        public async Task<ActionResult<Users>> Register([FromBody] Users user)
         {
-            var users = await _context.Users.FindAsync(id);
-            if (users == null)
-            {
-                return NotFound();
-            }
+            user.Password = _security.EncodePassword(user.Password);
 
-            _context.Users.Remove(users);
+            _context.Users.Add(user);
+
             await _context.SaveChangesAsync();
 
-            return users;
+            return Ok(user);
         }
+
     }
 }
