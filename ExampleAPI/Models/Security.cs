@@ -7,6 +7,7 @@ namespace ExampleAPI.Models
     public class Security
     {
         protected string _salt;
+
         public Security(string salt)
         {
             _salt = salt;
@@ -24,5 +25,6 @@ namespace ExampleAPI.Models
         {
             return encodedPassword == this.EncodePassword(password);
         }
+
     }
 }

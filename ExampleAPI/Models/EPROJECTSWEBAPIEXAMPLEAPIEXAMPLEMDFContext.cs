@@ -21,6 +21,7 @@ namespace ExampleAPI.Models
 
         public virtual DbSet<Books> Books { get; set; }
         public virtual DbSet<Chapters> Chapters { get; set; }
+        public virtual DbSet<RefreshToken> RefreshToken { get; set; }
         public virtual DbSet<Users> Users { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -50,6 +51,22 @@ namespace ExampleAPI.Models
                     .WithMany(p => p.Chapters)
                     .HasForeignKey(d => d.BookId)
                     .HasConstraintName("FK_Chapters_Books");
+            });
+
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.Property(e => e.ExpiryDate)
+                    .HasColumnName("Expiry_date")
+                    .HasColumnType("date");
+
+                entity.Property(e => e.Token).IsRequired();
+
+                entity.Property(e => e.UserId).HasColumnName("User_id");
+
+                entity.HasOne(d => d.User)
+                    .WithMany(p => p.RefreshToken)
+                    .HasForeignKey(d => d.UserId)
+                    .HasConstraintName("FK_RefreshToken_User");
             });
 
             modelBuilder.Entity<Users>(entity =>
