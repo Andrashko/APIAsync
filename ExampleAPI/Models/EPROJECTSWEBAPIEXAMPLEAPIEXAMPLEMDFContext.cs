@@ -21,6 +21,7 @@ namespace ExampleAPI.Models
 
         public virtual DbSet<Books> Books { get; set; }
         public virtual DbSet<Chapters> Chapters { get; set; }
+        public virtual DbSet<Files> Files { get; set; }
         public virtual DbSet<RefreshToken> RefreshToken { get; set; }
         public virtual DbSet<Users> Users { get; set; }
 
@@ -51,6 +52,13 @@ namespace ExampleAPI.Models
                     .WithMany(p => p.Chapters)
                     .HasForeignKey(d => d.BookId)
                     .HasConstraintName("FK_Chapters_Books");
+            });
+
+            modelBuilder.Entity<Files>(entity =>
+            {
+                entity.Property(e => e.Name).HasColumnName("name");
+
+                entity.Property(e => e.Url).HasColumnName("url");
             });
 
             modelBuilder.Entity<RefreshToken>(entity =>
