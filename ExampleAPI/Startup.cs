@@ -35,9 +35,15 @@ namespace ExampleAPI
             services.AddMvc(option => option.EnableEndpointRouting = false)
             .SetCompatibilityVersion(CompatibilityVersion.Version_3_0)
             .AddNewtonsoftJson(opt => opt.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);
-           
+
+            string connectionString = Configuration.GetConnectionString("ExampleDB");
+            if (connectionString.Contains("%CONTENTROOTPATH%"))
+                connectionString = connectionString.Replace("%CONTENTROOTPATH%", Directory.GetCurrentDirectory());
+
+
             services.AddDbContext<EPROJECTSWEBAPIEXAMPLEAPIEXAMPLEMDFContext>(
-                options=> options.UseSqlServer(Configuration.GetConnectionString("ExampleDB")));
+                options=> options.UseSqlServer(connectionString)
+            );
 
 
             //services.AddAuthentication("BasicAuthentication").
