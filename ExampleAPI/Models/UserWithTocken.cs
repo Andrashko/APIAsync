@@ -10,6 +10,7 @@
             this.Id = user.Id;
             this.Email = user.Email;
             this.Login = user.Login;
+            this.Role = user.Role;
         }
     }
 }

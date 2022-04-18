@@ -33,12 +33,13 @@ namespace ExampleAPI.Controllers
             _security = new Security (_jwtSettings.SecretKey);
         }
 
-        [Authorize]
+        [Authorize(Roles = "admin, user")]
+
         [HttpGet]
         public async Task<ActionResult<Users>> GetUsers()
         {
-            string login = HttpContext.User.Identity.Name;
-            var user = await _context.Users.Where(user => user.Login==login).FirstOrDefaultAsync();
+            int id = int.Parse(HttpContext.User.Identity.Name);
+            var user = await _context.Users.Where(user => user.Id == id).FirstOrDefaultAsync();
             if (user==null)
                 return NotFound();
             return Ok(user);
@@ -59,17 +60,19 @@ namespace ExampleAPI.Controllers
             await _context.SaveChangesAsync();
 
             UserWithTocken result = new UserWithTocken(userdb);
-            result.Token = GenerateJWTToken(userdb.Id);
+            result.Token = GenerateJWTToken(userdb.Id, userdb.Role);
             result.RefreshToken = refreshToken.Token;  
 
             return Ok(result);
         }
 
-        // POST: api/Users
+        // POST: api/Users/Register
         [HttpPost("Register")]
         public async Task<ActionResult<Users>> Register([FromBody] Users user)
         {
             user.Password = _security.EncodePassword(user.Password);
+
+            user.Role = "user";
 
             _context.Users.Add(user);
 
@@ -86,7 +89,7 @@ namespace ExampleAPI.Controllers
             if (user == null || ! await ValidateRefreshToken(user.Id, request.RefreshToken))
                 return null;
             UserWithTocken result = new UserWithTocken(user);
-            result.Token = GenerateJWTToken(user.Id);
+            result.Token = GenerateJWTToken(user.Id, user.Role);
             return result;
         }
 
@@ -104,7 +107,7 @@ namespace ExampleAPI.Controllers
             return refreshToken;
         }
 
-        private string GenerateJWTToken(int Id)
+        private string GenerateJWTToken(int Id, string Role)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
@@ -112,9 +115,10 @@ namespace ExampleAPI.Controllers
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new Claim(ClaimTypes.Name, Convert.ToString(Id))
+                    new Claim(ClaimTypes.Name, Convert.ToString(Id)),
+                    new Claim(ClaimTypes.Role, Convert.ToString(Role)),
                 }),
-                Expires = DateTime.Now.AddSeconds(1),
+                Expires = DateTime.Now.AddMinutes(10),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);

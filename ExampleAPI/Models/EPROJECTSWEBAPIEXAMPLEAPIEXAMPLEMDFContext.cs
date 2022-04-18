@@ -29,7 +29,7 @@ namespace ExampleAPI.Models
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseSqlServer("Name=ExampleDB");
+                optionsBuilder.UseSqlServer("Name=ExampleDBFull");
             }
         }
 
@@ -84,6 +84,11 @@ namespace ExampleAPI.Models
                 entity.Property(e => e.Login).HasMaxLength(50);
 
                 entity.Property(e => e.Password).HasMaxLength(50);
+
+                entity.Property(e => e.Role)
+                    .IsRequired()
+                    .HasMaxLength(50)
+                    .HasDefaultValueSql("(user_name())");
             });
 
             OnModelCreatingPartial(modelBuilder);
