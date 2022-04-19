@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ExampleAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ExampleAPI.Controllers
 {
@@ -98,6 +99,7 @@ namespace ExampleAPI.Controllers
 
         // DELETE: api/Books/5
         [HttpDelete("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<Books>> DeleteBooks(int id)
         {
             var books = await _context.Books.FindAsync(id);
@@ -106,6 +108,11 @@ namespace ExampleAPI.Controllers
                 return NotFound();
             }
 
+            var bookdb = await _context.Books.Include("Chapters").Where(book => book.Id == id).FirstAsync();
+            foreach (var chapter in bookdb.Chapters.ToList())
+            {
+                bookdb.Chapters.Remove(chapter)
+;           }
             _context.Books.Remove(books);
             await _context.SaveChangesAsync();
 

@@ -50,15 +50,36 @@ namespace ExampleAPI.Controllers
         [HttpPost ("Login")]
         public async Task<ActionResult<UserWithTocken>> Login( [FromBody] Users user)
         {
-            var userdb = await _context.Users.Where(u => u.Login == user.Login).FirstOrDefaultAsync();
+            var userdb = await _context.Users.Include("RefreshToken").Where(u => u.Login == user.Login).FirstOrDefaultAsync();
             if (userdb==null || ! _security.CheckPassword (user.Password, userdb.Password))
                 return BadRequest("Wrong password or login");
 
             //refresh token
-            RefreshToken refreshToken = GenerateRefreshToken();
-            userdb.RefreshToken.Add(refreshToken);
-            await _context.SaveChangesAsync();
+            foreach(RefreshToken token in userdb.RefreshToken.ToList())
+            {
+                if (token.ExpiryDate < DateTime.Now)
+                {
+                    userdb.RefreshToken.Remove(token);
+                }
+            }
+            RefreshToken refreshToken = userdb.RefreshToken.OrderBy(token=>token.ExpiryDate).FirstOrDefault();
 
+            if (userdb.RefreshToken.Count == 0)
+            {
+                refreshToken = GenerateRefreshToken();
+                userdb.RefreshToken.Add(refreshToken);
+            }
+            else
+            {
+                if (refreshToken.ExpiryDate < DateTime.Now.AddDays(1))
+                {
+                    userdb.RefreshToken.Remove(refreshToken);
+                    refreshToken = GenerateRefreshToken();
+                    userdb.RefreshToken.Add(refreshToken);
+                }
+            }
+            await _context.SaveChangesAsync();
+            
             UserWithTocken result = new UserWithTocken(userdb);
             result.Token = GenerateJWTToken(userdb.Id, userdb.Role);
             result.RefreshToken = refreshToken.Token;  
@@ -93,8 +114,28 @@ namespace ExampleAPI.Controllers
             return result;
         }
 
+        // PUT: api/Users/5
+        
+        [Authorize(Roles = "admin")]
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutUsers(int id, Users user)
+        {
+            if (id != user.Id)
+            {
+                return BadRequest();
+            }
+            var userdb = await _context.Users.Where(user => user.Id == id).FirstOrDefaultAsync();
 
+            if (userdb == null)
+                return NotFound();
 
+            userdb.Email = user.Email;
+            userdb.Role= user.Role;
+
+            await _context.SaveChangesAsync();
+            
+            return Ok(new UserWithTocken(userdb));
+        }
 
         private RefreshToken GenerateRefreshToken()
         {
@@ -107,7 +148,7 @@ namespace ExampleAPI.Controllers
             return refreshToken;
         }
 
-        private string GenerateJWTToken(int Id, string Role)
+        private string GenerateJWTToken(int id, string role)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
@@ -115,8 +156,8 @@ namespace ExampleAPI.Controllers
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new Claim(ClaimTypes.Name, Convert.ToString(Id)),
-                    new Claim(ClaimTypes.Role, Convert.ToString(Role)),
+                    new Claim(ClaimTypes.Name, Convert.ToString(id)),
+                    new Claim(ClaimTypes.Role, role),
                 }),
                 Expires = DateTime.Now.AddMinutes(10),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
